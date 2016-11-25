@@ -12,6 +12,7 @@ int rightWheelVelocityPin3 = 10;
 int i = 0;
 int count;
 int state[3] = {0, 0, 0};
+int x, y, z = 0;
 
 void setup(void) {
   Serial.begin(9600);
@@ -28,21 +29,8 @@ void setup(void) {
 }
 
 void loop(void) {
-  sensors_event_t accelEvent;
-  accel.getEvent(&accelEvent);
-    //Read every 10th data from 3D axis sensor
-  if(count == 200){
-    Serial.print("Accelerometer: ");
-    Serial.print(accelEvent.acceleration.x);
-    Serial.print("   ");
-    Serial.print(accelEvent.acceleration.y);
-    Serial.print("   ");
-    Serial.print(accelEvent.acceleration.z);
-    Serial.println();
-    count = 0;
-  } else {
-    count++;
-  }
+
+
       //Reading input from telephone
     if(Serial.available() > 0){
       state[i] = Serial.read();
@@ -55,25 +43,25 @@ void loop(void) {
     }
     //If input from telephone "Go straight"
     if(state[1] == 97)
-    if(accelEvent.acceleration.x < -1.1 && accelEvent.acceleration.x > -5) {
+    if(x < -1.1 && x > -5) {
       digitalWrite(leftWheelPin1, LOW);
       digitalWrite(leftWheelPin2, HIGH);
       digitalWrite(rightWheelPin1, HIGH);
       digitalWrite(rightWheelPin2, LOW);
       digitalWrite(rightWheelVelocityPin3, 120);
-    } else if(accelEvent.acceleration.x < -5) {
+    } else if(x < -5) {
       digitalWrite(leftWheelPin1, LOW);
       digitalWrite(leftWheelPin2, LOW);
       digitalWrite(rightWheelPin1, HIGH);
       digitalWrite(rightWheelPin2, LOW);
       digitalWrite(rightWheelVelocityPin3, 255);
-    } else if(accelEvent.acceleration.x > 1.1 && accelEvent.acceleration.x < 5) {
+    } else if(x > 1.1 && x < 5) {
       digitalWrite(leftWheelPin1, HIGH);
       digitalWrite(leftWheelPin2, LOW);
       digitalWrite(rightWheelPin1, LOW);
       digitalWrite(rightWheelPin2, HIGH);
       digitalWrite(rightWheelVelocityPin3, 255);
-    } else if(accelEvent.acceleration.x > 5) {
+    } else if(x > 5) {
       digitalWrite(leftWheelPin1, LOW);
       digitalWrite(leftWheelPin2, HIGH);
       digitalWrite(rightWheelPin1, LOW);
@@ -90,4 +78,23 @@ void loop(void) {
   } 
 }
 
-void read3D
+void read3D {
+  sensors_event_t accelEvent;
+  accel.getEvent(&accelEvent);
+    //Read every 10th data from 3D axis sensor
+  if(count == 200){
+      x = accelEvent.acceleration.x;
+      y = accelEvent.acceleration.y;
+      z = accelEvent.acceleration.z;
+    Serial.print("Accelerometer: ");
+    Serial.print(x);
+    Serial.print("   ");
+    Serial.print(y);
+    Serial.print("   ");
+    Serial.print(z);
+    Serial.println();
+    count = 0;
+  } else {
+    count++;
+  }
+}
