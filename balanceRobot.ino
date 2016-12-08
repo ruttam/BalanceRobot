@@ -13,7 +13,6 @@ const int rightWheelVelocityPin3 = 10;
 int leftWheel[3] = {leftWheelPin1, leftWheelPin2, leftWheelVelocityPin3};
 int rightWheel[3] = {rightWheelPin1, rightWheelPin2, rightWheelVelocityPin3};
 
-
 const int FORWARD = 1;
 const int REVERSE = 0;
 
@@ -21,7 +20,7 @@ const int REVERSE = 0;
 Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified(12345);
 
 int readCount = 0;
-int count;
+int readingFrequency;
 int bluetoothInput[3] = {0, 0, 0};
 float x = 0;
 char floatstr[15];
@@ -47,7 +46,7 @@ void loop(void) {
     Serial.println(angle);
     printCount = 0; 
   }
-  
+
   //Reading input from serial
   if (Serial.available() > 0) {
     bluetoothInput[readCount] = Serial.read();
@@ -68,28 +67,27 @@ void loop(void) {
   if (angle > 5) {
     moveWheel(leftWheel, FORWARD, 75);
     moveWheel(rightWheel, REVERSE, 75);
-    } else if (angle < -5) {
-      moveWheel(leftWheel, REVERSE, 75);
-      moveWheel(rightWheel, FORWARD, 75);
-      } else {
-        moveWheel(leftWheel, FORWARD, 0);
-        moveWheel(rightWheel, REVERSE, 0);
-      }
-    }
-
-    float readAccelerometerData() {
-      sensors_event_t accelEvent;
-      accel.getEvent(&accelEvent);
-    //Read every 200th data from accelerometer sensor
-    if(count == 20) {
-      x = accelEvent.acceleration.x;
-//    printFloat("Accelerometer x value:", normalizeAngle(x));
-count = 0;
-} else {
-  count++;
+  } else if (angle < -5) {
+    moveWheel(leftWheel, REVERSE, 75);
+    moveWheel(rightWheel, FORWARD, 75);
+  } else {
+    moveWheel(leftWheel, FORWARD, 0);
+    moveWheel(rightWheel, REVERSE, 0);
+  }
 }
 
-return normalizeAngle(x);
+float readAccelerometerData() {
+  sensors_event_t accelEvent;
+  accel.getEvent(&accelEvent);
+  //Read every 200th data from accelerometer sensor
+  if(readingFrequency == 20) {
+    x = accelEvent.acceleration.x;
+    readingFrequency = 0;
+  } else {
+    readingFrequency++;
+  }
+
+  return normalizeAngle(x);
 }
 
 void moveWheel(int wheel[3], int direction, int throttle) {
@@ -101,13 +99,3 @@ void moveWheel(int wheel[3], int direction, int throttle) {
 float normalizeAngle(float angle) {
   return angle * 9;
 }
-
-void printFloat(char *label, float value) {
-  //Since printf() does not include float or double numbers printing
-    //we need to convert float to string with dtostrf() function
-    //http://www.hobbytronics.co.uk/arduino-float-vars
-    dtostrf(x, 7, 3, floatstr);
-    //TODO: check if we need to extract value from pointer or not. (On the spot)
-    Serial.print(label);
-    Serial.println(value);
-  }
