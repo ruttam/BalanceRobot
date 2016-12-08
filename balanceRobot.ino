@@ -3,18 +3,28 @@
 #include <Adafruit_Sensor.h>
 #include <stdio.h>
 
+const int leftWheelPin1 = 7;
+const int leftWheelPin2 = 6;
+const int leftWheelVelocityPin3 = 5;
+const int rightWheelPin1 = 8;
+const int rightWheelPin2 = 9;
+const int rightWheelVelocityPin3 = 10;
+
+int leftWheel[3] = {leftWheelPin1, leftWheelPin2, leftWheelVelocityPin3};
+int rightWheel[3] = {rightWheelPin1, rightWheelPin2, rightWheelVelocityPin3};
+
+const int FORWARD = 1;
+const int REVERSE = 0;
+
+//Instantiate accelerometer/gyro
 Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified(12345);
-int leftWheelPin1 = 7;
-int leftWheelPin2 = 6;
-int leftWheelVelocityPin3 = 5;
-int rightWheelPin1 = 8;
-int rightWheelPin2 = 9;
-int rightWheelVelocityPin3 = 10;
-int i = 0;
-int count;
+
+int readCount = 0;
+int readingFrequency;
 int bluetoothInput[3] = {0, 0, 0};
 float x = 0;
 char floatstr[15];
+int printCount;
 
 void setup(void) {
   Serial.begin(9600);
@@ -24,100 +34,68 @@ void setup(void) {
   pinMode(rightWheelPin1, OUTPUT);
   pinMode(rightWheelPin2, OUTPUT);
   pinMode(rightWheelVelocityPin3, OUTPUT);
-  if(!accel.begin())
-  {
+  if(!accel.begin()) {
     while(1);
   }
 }
 
 void loop(void) {
-  readAccelerometerData();
-  //Reading input from telephone
-  if(Serial.available() > 0){
-    bluetoothInput[i] = Serial.read();
-    if(i == 2){
-      Serial.println("Conneted via Bluetooth: " + String(bluetoothInput[0]));
-      i = 0;
-    } else {
-        i++;
-    }
+  float angle = readAccelerometerData();
+  printCount++;
+  if(printCount > 200) {
+    Serial.println(angle);
+    printCount = 0; 
   }
-  //If input from telephone "Go straight"
-  if(bluetoothInput[1] == 97){
+
+  //Reading input from serial
+  if (Serial.available() > 0) {
+    bluetoothInput[readCount] = Serial.read();
+
+    if (readCount == 2)  {
+      Serial.println("Conneted via Bluetooth: " + String(bluetoothInput[0]));
+      readCount = 0;
+      } else {
+        readCount++;
+      } 
+    }
+
+    //If input from serial "Go straight"
+    if (bluetoothInput[1] == 97) {
     //TODO: Implementation
   }
-  //If falling to the back - go to the front
-  if(x < -1 && x > -4) {
-    //moveWheel(
-    digitalWrite(leftWheelPin1, HIGH);
-    digitalWrite(leftWheelPin2, LOW);
-    digitalWrite(leftWheelVelocityPin3, 20);
-    digitalWrite(rightWheelPin1, LOW);
-    digitalWrite(rightWheelPin2, HIGH);
-    digitalWrite(rightWheelVelocityPin3, 20);
-  //If fell to the back - do not move
-  } else if(x < -5) {
-    digitalWrite(leftWheelPin1, LOW);
-    digitalWrite(leftWheelPin2, LOW);
-    digitalWrite(leftWheelVelocityPin3, 0);
-    digitalWrite(rightWheelPin1, LOW);
-    digitalWrite(rightWheelPin2, LOW);
-    digitalWrite(rightWheelVelocityPin3, 0);
-  //If falling to the front - go back
-  } else if(x > 1 && x < 4) {
-    digitalWrite(leftWheelPin1, LOW);
-    digitalWrite(leftWheelPin2, HIGH);
-    digitalWrite(leftWheelVelocityPin3, 20);
-    digitalWrite(rightWheelPin1, HIGH);
-    digitalWrite(rightWheelPin2, LOW);
-    digitalWrite(rightWheelVelocityPin3, 20);
-  //If fell to the front - do not move
-  } else if(x > 5) {
-    digitalWrite(leftWheelPin1, LOW);
-    digitalWrite(leftWheelPin2, LOW);
-    digitalWrite(leftWheelVelocityPin3, 0);
-    digitalWrite(rightWheelPin1, LOW);
-    digitalWrite(rightWheelPin2, LOW);
-    digitalWrite(rightWheelVelocityPin3, 0);
-  //If standing straight - do not move
-  } else if(x > -2 && x <2){
-    digitalWrite(leftWheelPin1, LOW);
-    digitalWrite(leftWheelPin2, LOW);
-    digitalWrite(leftWheelVelocityPin3, 0);
-    digitalWrite(rightWheelPin1, LOW);
-    digitalWrite(rightWheelPin2, LOW);
-    digitalWrite(rightWheelVelocityPin3, 0);
+
+  if (angle > 5) {
+    moveWheel(leftWheel, FORWARD, 75);
+    moveWheel(rightWheel, REVERSE, 75);
+  } else if (angle < -5) {
+    moveWheel(leftWheel, REVERSE, 75);
+    moveWheel(rightWheel, FORWARD, 75);
+  } else {
+    moveWheel(leftWheel, FORWARD, 0);
+    moveWheel(rightWheel, REVERSE, 0);
   }
 }
 
-void readAccelerometerData(void) {
+float readAccelerometerData() {
   sensors_event_t accelEvent;
   accel.getEvent(&accelEvent);
   //Read every 200th data from accelerometer sensor
-  if(count == 200) {
+  if(readingFrequency == 20) {
     x = accelEvent.acceleration.x;
-    //Since printf() does not include float or double numbers printing
-    //we need to convert float to string with dtostrf() function
-    //http://www.hobbytronics.co.uk/arduino-float-vars
-    dtostrf(x, 7, 3, floatstr);
-    //In order to use printf() we need to implement it in Print.h header file in Arduino cores
-    //http://playground.arduino.cc/Main/Printf
-    Serial.printf("Accelerometer x value: %s \n", floatstr);
-    count = 0;
+    readingFrequency = 0;
   } else {
-    count++;
+    readingFrequency++;
   }
+
+  return normalizeAngle(x);
 }
 
-//TODO: Implementation
-void moveWheel(int wheel, int input, int velocity, int velocityLevel){
-  if(input == HIGH){
-    digitalWrite(wheel, LOW);
-    digitalWrite(wheel, HIGH);
-    digitalWrite(wheel, velocityLevel);
-  } else {
-    digitalWrite(wheel, LOW);
-    digitalWrite(wheel, LOW);
-    digitalWrite(wheel, 0);
-  }
+void moveWheel(int wheel[3], int direction, int throttle) {
+  digitalWrite(wheel[0], direction == FORWARD ? LOW : HIGH);
+  digitalWrite(wheel[1], direction == FORWARD ? HIGH : LOW);
+  digitalWrite(wheel[2], throttle);
+}
+
+float normalizeAngle(float angle) {
+  return angle * 9;
 }
