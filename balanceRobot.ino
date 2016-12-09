@@ -13,8 +13,9 @@ const int rightWheelVelocityPin3 = 10;
 int leftWheel[3] = {leftWheelPin1, leftWheelPin2, leftWheelVelocityPin3};
 int rightWheel[3] = {rightWheelPin1, rightWheelPin2, rightWheelVelocityPin3};
 
-const int FORWARD = 1;
-const int REVERSE = 0;
+const bool FORWARD = true;
+const int LEFT = 3;
+const int RIGHT = 4;
 
 //Instantiate accelerometer/gyro
 Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified(12345);
@@ -34,68 +35,66 @@ void setup(void) {
   pinMode(rightWheelPin1, OUTPUT);
   pinMode(rightWheelPin2, OUTPUT);
   pinMode(rightWheelVelocityPin3, OUTPUT);
-  if(!accel.begin()) {
-    while(1);
+  if (!accel.begin()) {
+    while (1);
   }
 }
 
 void loop(void) {
   float angle = readAccelerometerData();
-  printCount++;
-  if(printCount > 200) {
-    Serial.println(angle);
-    printCount = 0; 
-  }
-
+  Serial.println(angle);
+  bool isForward = setBalancingDirection(angle);
+  moveWheel(leftWheel, isForward, calculateVelocity(angle));
+  moveWheel(rightWheel, !isForward, calculateVelocity(angle));
   //Reading input from serial
   if (Serial.available() > 0) {
-    bluetoothInput[readCount] = Serial.read();
-
-    if (readCount == 2)  {
-      Serial.println("Conneted via Bluetooth: " + String(bluetoothInput[0]));
-      readCount = 0;
-      } else {
-        readCount++;
-      } 
-    }
-
-    //If input from serial "Go straight"
-    if (bluetoothInput[1] == 97) {
-    //TODO: Implementation
-  }
-
-  if (angle > 5) {
-    moveWheel(leftWheel, FORWARD, 75);
-    moveWheel(rightWheel, REVERSE, 75);
-  } else if (angle < -5) {
-    moveWheel(leftWheel, REVERSE, 75);
-    moveWheel(rightWheel, FORWARD, 75);
-  } else {
-    moveWheel(leftWheel, FORWARD, 0);
-    moveWheel(rightWheel, REVERSE, 0);
+    setBluetoohDirection(readBluetoothData());
   }
 }
 
 float readAccelerometerData() {
   sensors_event_t accelEvent;
   accel.getEvent(&accelEvent);
-  //Read every 200th data from accelerometer sensor
-  if(readingFrequency == 20) {
-    x = accelEvent.acceleration.x;
-    readingFrequency = 0;
-  } else {
-    readingFrequency++;
-  }
-
+  x = accelEvent.acceleration.x;
   return normalizeAngle(x);
 }
 
-void moveWheel(int wheel[3], int direction, int throttle) {
+int readBluetoothData() {
+  bluetoothInput[readCount] = Serial.read();
+  if (readCount == 2)  {
+    Serial.println("Conneted via Bluetooth: " + String(bluetoothInput[0]));
+    return bluetoothInput[0];
+    readCount = 0;
+  } else {
+    readCount++;
+  }
+}
+
+void moveWheel(int wheel[3], bool direction, int throttle) {
   digitalWrite(wheel[0], direction == FORWARD ? LOW : HIGH);
   digitalWrite(wheel[1], direction == FORWARD ? HIGH : LOW);
-  digitalWrite(wheel[2], throttle);
+  analogWrite(wheel[2], throttle);
 }
 
 float normalizeAngle(float angle) {
   return angle * 9;
+}
+
+bool setBalancingDirection(float angle) {
+  return angle > 0 ? true : false;
+}
+
+int calculateVelocity(float angle){
+  if(angle != 0 && (angle < 45 || angle > -45)) {
+    return angle > 0 ? angle * 5 : (-1) * (angle * 5);
+  } else {
+    return 0;
+  }
+}
+
+int setBluetoohDirection(int input){
+  //If input from serial "Go straight"
+  if (bluetoothInput[1] == 97) {
+    //TODO: Implementation
+  }
 }
