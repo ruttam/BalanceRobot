@@ -46,6 +46,7 @@ void loop(void) {
   bool isForward = setBalancingDirection(angle);
   moveWheel(leftWheel, isForward, calculateVelocity(angle));
   moveWheel(rightWheel, !isForward, calculateVelocity(angle));
+  Serial.print("Velocity: "); Serial.println(calculateVelocity(angle));
   //Reading input from serial
   if (Serial.available() > 0) {
     setBluetoohDirection(readBluetoothData());
@@ -85,8 +86,9 @@ bool setBalancingDirection(float angle) {
 }
 
 int calculateVelocity(float angle){
-  if(angle != 0 && (angle < 45 || angle > -45)) {
-    return angle > 0 ? angle * 5 : (-1) * (angle * 5);
+  if(angle != 0 && angle < 45 && angle > -45) {
+    int result = angle > 0 ? angle * 5 : (-1) * (angle * 5);
+    return result > 255 ? 255 : result;
   } else {
     return 0;
   }
